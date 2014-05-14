@@ -73,7 +73,7 @@ exports.handleCORSMethod = function handleCORSMethod(request, response) {
     if (ALLOWED_ORIGINS = '*') {
         response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGINS;
     } else if (ALLOWED_ORIGINS.indexOf(origin) > -1) {
-        esponse.headers["Access-Control-Allow-Origin"] = origin;
+        response.headers["Access-Control-Allow-Origin"] = origin;
     } else {
         return;
     }
