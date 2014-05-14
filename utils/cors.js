@@ -1,25 +1,51 @@
-﻿/**
+/**
 * This cors.js file is intended to provide a CORS support to your application.
 * @author Choisel Fogang, Alexandre Morgaut
 */
 var
-    headersBlackList, // We don't reuse the headers provided in this list
-    defaultScheme, // Default HTTP scheme to use.
-    allowedDomains; // List of the allowed domains that can make cross origin calls to this application
+    HEADERS_BLACK_LIST, // We don't reuse the headers provided in this list
+    DEFAULT_SCHEME, // Default HTTP scheme to use.
+    ALLOWED_METHODS, // list of allowed methods
+    ALLOWED_ORIGINS; // List of the allowed domains that can make cross origin calls to this application
 
-headersBlackList = ['Host', 'Date', 'Server', 'Content-Length'];
-defaultScheme = "http://";
-allowedDomains = "*"; // for specific values use "," as a separator
+
+// list remote app domain/IP and port allowed to access this data
+ALLOWED_ORIGINS = [
+    'localhost:8081',
+    '12.0.0.1:8081',
+    'localhost:8082',
+    '12.0.0.1:8082'
+]; 
+// or for any remote app use "*" (WARNING - sensible to XSS & CSRF attacks)
+// ALLOWED_ORIGINS = "*"; 
+
+
+
+ALLOWED_METHODS = [
+    'POST',
+    'GET',
+    'PUT',
+    'DELETE',
+    'OPTIONS'
+].join();
+
+
+
+HEADERS_BLACK_LIST = ['Host', 'Date', 'Server', 'Content-Length'];
+
+DEFAULT_SCHEME = "http://";
+
+
+
+function UpperCaseFirst(namePart) {
+    return namePart[0].toUpperCase() + namePart.substr(1);
+}
 
 function formatHeaderName(headerName) {
     "use strict";
     headerName = headerName.toLowerCase();
     headerName = headerName.split('_');
-    return headerName.map(
-        function UpperCaseFirst(namePart) {
-            return namePart[0].toUpperCase() + namePart.substr(1);
-        }
-    ).join('-');
+    return headerName.map(UpperCaseFirst).join('-');
 }
 
 /**
@@ -27,7 +53,7 @@ function formatHeaderName(headerName) {
 * @param request {HTTPRequest} the request made to the wakanda server
 * @param response {HTTPResponse} the response wakanda server will send back to the caller
 */
-function handleCORSMethod(request, response) {
+exports.handleCORSMethod = function handleCORSMethod(request, response) {
     "use strict";
 
     var
@@ -35,17 +61,28 @@ function handleCORSMethod(request, response) {
         scheme,
         urlToCall,
         headers,
-        requestedHeader;
+        requestedHeader,
+        origin;
+
+    //debugger;
+    origin = request.headers["Origin"];
+    requestedHeader = (request.headers["Access-Control-Request-Headers"] || '').split(',');
+    requestedHeader.push('Content-Type');
 
 	// add CORS headers
-    response.headers["Access-Control-Allow-Origin"] = allowedDomains;
-    requestedHeader = request.headers["Access-Control-Request-Headers"];
-    response.headers["Access-Control-Allow-Headers"] = requestedHeader !== undefined ? requestedHeader + " ,Content-Type" : "Content-Type";
+    if (ALLOWED_ORIGINS = '*') {
+        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGINS;
+    } else if (ALLOWED_ORIGINS.indexOf(origin) > -1) {
+        esponse.headers["Access-Control-Allow-Origin"] = origin;
+    } else {
+        return;
+    }
+    response.headers["Access-Control-Allow-Headers"] = requestedHeader.join();
 
 	if (request.method === "OPTIONS") {
 		// Client is asking for the allowed methods
 		// We provide the allowed methods and stop the execution
-		response.headers["Access-control-allow-methods"] = "POST,GET,PUT,DELETE,OPTIONS";
+		response.headers["Access-control-allow-methods"] = ALLOWED_METHODS;
 		return;
 	}
 
@@ -60,10 +97,10 @@ function handleCORSMethod(request, response) {
     if (request.hasOwnProperty('isSSL')) {
         scheme = request.isSSL ? 'https://' : 'http://';
     } else {
-        scheme = defaultScheme;
+        scheme = DEFAULT_SCHEME;
     }
     // format the request URL according to the path used with the addHttpRequestHandler
-    urlToCall = scheme + request.host + request.url.replace("/cors/", "/rest/");
+    urlToCall = scheme + request.host + request.rawURL.replace("/cors/", "/rest/");
     // set request method and URL, we use synchronous call
     req.open(request.method, urlToCall, false);
     // copy request headers
@@ -73,7 +110,7 @@ function handleCORSMethod(request, response) {
                 headerValue;
             headerValue = headers[headerName];
             headerName = formatHeaderName(headerName);
-            if (headerValue !== undefined && headersBlackList.indexOf(headerName) === -1) {
+            if (headerValue !== undefined && HEADERS_BLACK_LIST.indexOf(headerName) === -1) {
                 req.setRequestHeader(headerName, headerValue);
             }
         }
@@ -97,7 +134,7 @@ function handleCORSMethod(request, response) {
             header = header.split(':');
             headerName = header[0];
             headerValue = header[1];
-            if (headerValue && headersBlackList.indexOf(headerName) === -1) {
+            if (headerValue && HEADERS_BLACK_LIST.indexOf(headerName) === -1) {
                 response.headers[headerName] = headerValue;
             }
         }
@@ -110,4 +147,6 @@ function handleCORSMethod(request, response) {
     if (req.responseText !== undefined)
         result = req.responseText.replace(searchString, '\/cors\/');
     response.body = result || null;
+    
+    return result;
 }
