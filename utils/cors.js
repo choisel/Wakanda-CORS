@@ -31,7 +31,7 @@ ALLOWED_METHODS = [
 
 
 
-HEADERS_BLACK_LIST = ['Host', 'Date', 'Server', 'Content-Length'];
+HEADERS_BLACK_LIST = ['Host', 'Date', 'Server', 'Content-Length', 'Content-Encoding'];
 
 DEFAULT_SCHEME = "http://";
 
